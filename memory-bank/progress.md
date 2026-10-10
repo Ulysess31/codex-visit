@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-- 화면, 클라이언트, 원격 Supabase 설정 적용 완료. 기존 방명록 데이터를 보존했다.
+- 화면, 클라이언트, 원격 Supabase 설정 및 GitHub Pages 배포 완료. 기존 방명록 데이터를 보존했다.
 - 저장소를 `Ulysess31/codex-visit`에 연결했다. Clone 당시 저장소는 비어 있었다.
 - Supabase `public.guestbook`에 확인된 항목이 하나 있다(`id = 1`). 이후 스키마 변경이나 기능 구현 시 이 데이터를 보존한다.
 - 공개 읽기와 비로그인 쓰기 정책을 사용자 승인 후 Supabase에 적용했다.
@@ -20,8 +20,8 @@
 - [x] 검토된 Supabase 스키마와 공개 접근 정책을 원격 프로젝트에 적용
 - [x] 원격 정책, Storage, Realtime, 기존 데이터 유지 확인
 - [x] GitHub Pages용 Vite base 경로와 자동 배포 워크플로 준비
-- [ ] GitHub 저장소 Pages 소스 및 Supabase Actions 변수 설정
-- [ ] 첫 GitHub Pages 배포 완료 및 공개 URL 확인
+- [x] GitHub 저장소 Pages 소스 및 Supabase Actions 변수 설정
+- [x] GitHub Pages 배포 완료 및 공개 URL 확인
 
 ## 작업 기록
 
@@ -37,6 +37,8 @@
 - 새 댓글 테이블, 미디어 컬럼, `guestbook-media` Storage 버킷과 RLS 정책, Realtime 게시 테이블 등록을 확인했다.
 - 기존 방명록 `id = 1`의 내용과 레코드가 그대로 보존된 것을 확인했다.
 - Supabase 보안 Advisor에는 발견 사항이 없었다. 성능 Advisor의 미사용 인덱스 알림은 빈 댓글 테이블에 방금 추가한 조회용 인덱스를 가리킨다.
+- GitHub Actions에서 초기 설정 누락으로 실패한 실행 뒤 재실행이 성공한 것을 확인했다. 성공 실행은 `38032957641`이며 커밋은 `e10ea96`이다.
+- `https://ulysess31.github.io/codex-visit/`가 HTTP 200으로 응답하고 배포된 페이지를 제공하는 것을 확인했다.
 
 ## 수작업으로 적용할 때의 절차
 
@@ -54,7 +56,5 @@
 
 ## 다음 작업
 
-1. 저장소 Settings에서 Pages source를 GitHub Actions로 설정한다.
-2. Actions repository variables에 Supabase URL과 Publishable Key를 추가한다.
-3. Actions에서 배포 워크플로를 실행하고 공개 URL을 확인한다.
-4. 공개 쓰기 운영을 위한 스팸 방지 방식을 결정한다.
+1. 브라우저에서 공개 사이트의 방명록, 사진, 댓글 및 실시간 업데이트 흐름을 확인한다.
+2. 공개 쓰기 운영을 위한 스팸 방지 방식을 결정한다.
