@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-- 브라우저 탭 제목을 `클라우드성공 방명록`으로 변경하고 프로덕션 빌드를 검증했다. main push 및 GitHub Pages 배포 확인을 진행한다.
+- 브라우저 탭 제목을 `클라우드성공 방명록`으로 변경하고 프로덕션 빌드, main push 및 GitHub Pages 배포를 완료했다.
 - 화면, 클라이언트, 원격 Supabase 설정 및 GitHub Pages 배포 완료. 기존 방명록 데이터를 보존했다.
 - 저장소를 `Ulysess31/codex-visit`에 연결했다. Clone 당시 저장소는 비어 있었다.
 - Supabase `public.guestbook`에 확인된 항목이 하나 있다(`id = 1`). 이후 스키마 변경이나 기능 구현 시 이 데이터를 보존한다.
@@ -25,6 +25,13 @@
 - [x] GitHub Pages 배포 완료 및 공개 URL 확인
 
 ## 작업 기록
+
+### 2026-10-10 — 클라우드성공 방명록 제목 배포
+
+- `index.html`의 브라우저 탭 제목을 `클라우드성공 방명록`으로 변경했다.
+- `npm run build`, `git diff --check` 및 빌드 산출물의 제목 확인을 완료했다.
+- 변경 커밋 `17be9ba`를 main에 push했다. GitHub Pages Actions 실행 `38036528091`의 build/deploy 성공을 확인했다.
+- 공개 주소는 `https://ulysess31.github.io/codex-visit/`이다. 현재 클라우드 환경의 공개 URL 요청은 HTTP 403으로 제한되어 실제 응답 내용은 확인하지 못했다.
 
 ### 2026-10-10
 
