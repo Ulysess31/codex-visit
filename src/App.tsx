@@ -241,7 +241,7 @@ function App() {
 
   return <main className="app-shell">
     <header className="topbar">
-      <button className="brand" onClick={() => setScreen('write')} aria-label="방명록 작성 화면으로 이동"><span className="brand-mark">모</span><span>모여서 쓰는 방명록</span></button>
+      <button className="brand" onClick={() => setScreen('write')} aria-label="방명록 작성 화면으로 이동"><span className="brand-mark">클</span><span>클라우드성공 방명록</span></button>
       <nav className="top-actions" aria-label="주요 메뉴">
         <span className={`live-status ${connection}`}><i />{connection === 'online' ? '실시간 연결됨' : connection === 'offline' ? '연결 확인 필요' : '연결 중'}</span>
         <button className={`nav-button ${screen === 'board' ? 'nav-current' : ''}`} onClick={() => setScreen('board')}><BoardIcon /> 보드 보기 <span className="entry-count">{entries.length}</span></button>
