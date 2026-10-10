@@ -19,6 +19,9 @@
 - [x] 반응형 화면과 접근성 기본 동작 구현
 - [x] 검토된 Supabase 스키마와 공개 접근 정책을 원격 프로젝트에 적용
 - [x] 원격 정책, Storage, Realtime, 기존 데이터 유지 확인
+- [x] GitHub Pages용 Vite base 경로와 자동 배포 워크플로 준비
+- [ ] GitHub 저장소 Pages 소스 및 Supabase Actions 변수 설정
+- [ ] 첫 GitHub Pages 배포 완료 및 공개 URL 확인
 
 ## 작업 기록
 
@@ -51,6 +54,7 @@
 
 ## 다음 작업
 
-1. 브라우저에서 방명록, 이미지, 댓글 및 Realtime 사용자 흐름을 확인한다.
-2. 배포 대상을 결정하고 환경 변수를 등록한다.
-3. 공개 쓰기 운영을 위한 스팸 방지 방식을 결정한다.
+1. 저장소 Settings에서 Pages source를 GitHub Actions로 설정한다.
+2. Actions repository variables에 Supabase URL과 Publishable Key를 추가한다.
+3. Actions에서 배포 워크플로를 실행하고 공개 URL을 확인한다.
+4. 공개 쓰기 운영을 위한 스팸 방지 방식을 결정한다.

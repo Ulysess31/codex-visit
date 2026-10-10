@@ -33,7 +33,7 @@
 ## 미정 결정 사항
 
 - 공개 쓰기 운영을 위한 스팸 방지 방안
-- 배포 대상과 필요한 환경 변수
+- GitHub Pages 게시 소스와 Actions 변수를 저장소 설정에서 활성화
 
 ## 구현 완료 기능
 
@@ -42,6 +42,7 @@
 - 방명록 상세 화면과 댓글 입력
 - Supabase 조회·저장·Realtime 구독 코드
 - 모바일 대응 스타일
+- GitHub Pages 빌드 및 배포 워크플로
 
 ## 변경 기록
 
@@ -49,3 +50,4 @@
 - 2026-10-10: 문서 설명을 한국어로 정리했다.
 - 2026-10-10: Vite + React + TypeScript 클라이언트와 Supabase 연동, 마이그레이션 초안을 구현했다.
 - 2026-10-10: `npm install` 완료, `npm run build` 성공. 사용자 승인 후 원격 Supabase 마이그레이션 적용 및 스키마·RLS·Storage·Realtime 검증 완료.
+- 2026-10-10: GitHub Pages용 `/codex-visit/` base 경로 및 Actions 배포 워크플로 추가. 실제 배포를 위해 저장소 Pages 소스와 Supabase Actions 변수의 수동 설정이 남아 있다.

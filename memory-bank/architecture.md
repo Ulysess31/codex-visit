@@ -9,6 +9,7 @@
 - 프런트엔드는 Vite, React, TypeScript로 구성한다.
 - 데이터베이스, 이미지 Storage, Realtime 전송은 Supabase를 사용한다.
 - Supabase 연결 값은 `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` 환경 변수로 전달한다. 실제 로컬 값은 `.env.local`에 두고 Git에 커밋하지 않는다.
+- GitHub Pages 배포는 GitHub Actions에서 Vite를 빌드한다. 프로젝트 사이트 경로는 `/codex-visit/`이며 Supabase 공개 연결 값은 저장소 Actions 변수에서 제공한다.
 
 ## 사용자 경험
 
