@@ -2,6 +2,7 @@
 
 ## 현재 상태
 
+- 브라우저 탭 제목을 `클라우드성공 방명록`으로 변경하고 프로덕션 빌드를 검증했다. main push 및 GitHub Pages 배포 확인을 진행한다.
 - 화면, 클라이언트, 원격 Supabase 설정 및 GitHub Pages 배포 완료. 기존 방명록 데이터를 보존했다.
 - 저장소를 `Ulysess31/codex-visit`에 연결했다. Clone 당시 저장소는 비어 있었다.
 - Supabase `public.guestbook`에 확인된 항목이 하나 있다(`id = 1`). 이후 스키마 변경이나 기능 구현 시 이 데이터를 보존한다.
