@@ -7,9 +7,9 @@
 ## 기존 백엔드 확인 사항
 
 - Supabase가 MCP를 통해 연결되어 있다.
-- 확인된 `public.guestbook` 컬럼은 `id`(bigint identity 기본 키), `created_at`(timestamptz, 기본값 `now()`), `author`(nullable text), `content`(nullable text)이다.
+- 기본 방명록 확인 당시 `public.guestbook` 컬럼은 `id`(bigint identity 기본 키), `created_at`(timestamptz, 기본값 `now()`), `author`(nullable text), `content`(nullable text)였다. 이후 미디어 및 Auth 소유권 컬럼을 추가했다.
 - `public.guestbook`에는 Row Level Security가 활성화되어 있다.
-- `id = 1` 항목이 있다. 내용은 `첫방문입니다.반가와요`로 변경되었다.
+- Auth migration 적용 직전 방명록 3건, 댓글 6건, Storage 오브젝트 2개가 있었고, 적용 후에도 모두 유지됐다.
 - 초기에는 `guestbook` RLS 정책, 공개 Storage 버킷, Realtime 게시 테이블이 없었다. 사용자 승인을 받은 후 아래 마이그레이션을 적용했다.
 - `guestbook`에는 `media_path`, `media_kind` 컬럼이 추가됐다. 기존 레코드의 내용은 변경하지 않았다.
 - `guestbook_comments` 테이블을 만들고 1~40자 작성자, 1~500자 댓글 본문, 기존 방명록 연결을 적용했다.
@@ -25,8 +25,8 @@
 - 사진·그림·댓글 기능을 추가할 때 기존 방명록 레코드를 보존한다.
 - 데이터베이스 변경 전에 현재 스키마와 접근 정책을 확인한다.
 - 프런트엔드는 Vite + React + TypeScript로 구성한다.
-- 공개 보드에서 사용할 마이그레이션 SQL을 `supabase/migrations/20261010000000_guestbook_realtime_app.sql`에 준비했다. 적용 전에 공개 읽기·비로그인 쓰기 정책에 대한 운영자 검토가 필요하다.
-- 운영자 승인 후 위 SQL을 Supabase 원격 프로젝트에 적용했다.
+- 초기 마이그레이션은 `supabase/migrations/20261010062619_guestbook_realtime_app.sql`이며 원격에도 적용됐다.
+- Auth/RLS 확장 migration은 `supabase/migrations/20261010085149_auth_profiles_and_ownership.sql`이며, 기존 데이터를 유지하면서 현재 Supabase 프로젝트에 적용했다.
 - 앱은 사진 업로드 5MB 제한(JPEG, PNG, WEBP, GIF), 그림판 PNG, 40자 작성자 이름, 500자 본문·댓글 제한을 적용한다.
 - 새 방명록과 댓글의 Realtime 구독, 로딩/연결 오류 표시, 반응형 UI를 구현했다.
 
@@ -43,6 +43,17 @@
 - Supabase 조회·저장·Realtime 구독 코드
 - 모바일 대응 스타일
 - GitHub Pages 빌드 및 배포 워크플로
+
+## 회원 인증·인가 구현 상태
+
+- Supabase Auth 이메일/비밀번호 가입·로그인·로그아웃, 세션 복원, 비밀번호 재설정, 프로필 표시 이름·아바타 편집 UI를 추가했다.
+- 가입 시 `auth.users` 트리거가 `public.profiles`를 생성하도록 migration을 적용했다. 서비스 역할 키를 클라이언트에서 사용하지 않는다.
+- guestbook/comment에 `auth.users.id` FK 기반 nullable `user_id`와 소유자 수정·삭제 RLS, Storage의 `members/<uid>` 및 `avatars/<uid>` 경로 정책을 migration에 정의했다.
+- 기존 공개 읽기, 비회원 작성/`entries/` 업로드 및 기존 데이터는 보존하는 정책이다. 회원 글·댓글의 수정·삭제 UI는 사용자 소유 항목에만 표시한다.
+- `supabase/migrations/20261010085149_auth_profiles_and_ownership.sql`을 현재 Supabase 프로젝트에 적용했다. 기존 guestbook 3건, 댓글 6건, Storage 파일 2개가 유지됨을 확인했다.
+- Supabase Security Advisor에는 결과가 없었다. Performance Advisor는 새 UID 인덱스 2개가 아직 사용되지 않았다는 정보성 결과를 보였다.
+- GitHub Pages는 이 변경 이후 아직 재배포하지 않았다. Supabase Auth URL/email 설정과 실제 회원가입·로그인 흐름 확인은 남아 있다.
+- `.env.local`의 `SUPABASE_SERVICE_ROLE_KEY`는 이 클라이언트 기능에서 읽지 않는다. 브라우저 번들에 `VITE_` 접두어 service-role 변수를 넣지 않는다.
 
 ## 변경 기록
 

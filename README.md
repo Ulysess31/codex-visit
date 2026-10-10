@@ -26,7 +26,9 @@
 
 ## Supabase 설정
 
-`supabase/migrations/20261010000000_guestbook_realtime_app.sql`은 기존 `guestbook` 데이터를 보존하면서 미디어 컬럼과 댓글 테이블, Storage 버킷, RLS 정책 및 Realtime 등록을 준비합니다.
+`supabase/migrations/20261010062619_guestbook_realtime_app.sql`은 방명록 미디어, 댓글, Storage, RLS 및 Realtime 구성을 준비합니다. `supabase/migrations/20261010085149_auth_profiles_and_ownership.sql`은 Supabase Auth 프로필과 회원 소유권 정책을 추가합니다. 두 migration은 연결된 Supabase 프로젝트에 적용되어 있으며, 기존 방명록·댓글·이미지는 보존됩니다.
+
+회원가입 프로필은 `auth.users.id`를 참조하는 DB 트리거가 생성합니다. 이 정적 브라우저 앱에는 `SUPABASE_SERVICE_ROLE_KEY`가 필요하지 않습니다. Supabase **Authentication → URL Configuration**의 Site URL은 운영 `https://ulysess31.github.io/codex-visit/`로 설정하고, 허용 Redirect URLs에 로컬 주소를 추가해야 합니다. 현재 로컬 개발 서버는 `http://localhost:5174/`에서 실행 중이며, 기존 사용 중인 포트 `5173`도 사용할 계획이면 `http://localhost:5173/`도 함께 등록하세요.
 
 이 방명록은 공개 보드로 설계되어 비로그인 방문자의 읽기와 쓰기를 허용합니다. 프로젝트 운영자 승인 후 마이그레이션을 연결된 Supabase 프로젝트에 적용했습니다. 정책은 작성자와 본문 길이를 제한하고 새 글·댓글의 공개 등록을 허용합니다. 기존 `guestbook` 데이터는 보존됩니다.
 

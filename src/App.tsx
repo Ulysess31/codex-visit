@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent, type ReactNode } from 'react'
+import type { User } from '@supabase/supabase-js'
 import { hasSupabaseConfig, MEDIA_BUCKET, mediaUrl, supabase } from './lib/supabase'
-import type { GuestbookComment, GuestbookEntry } from './types'
+import AuthDialog, { type AuthDialogMode } from './AuthDialog'
+import type { GuestbookComment, GuestbookEntry, Profile } from './types'
 
 type Screen = 'write' | 'board'
 type Toast = { kind: 'success' | 'error' | 'info'; message: string } | null
@@ -118,6 +120,17 @@ function App() {
   const [showCanvas, setShowCanvas] = useState(false)
   const [commentAuthor, setCommentAuthor] = useState('')
   const [commentContent, setCommentContent] = useState('')
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [authReady, setAuthReady] = useState(!supabase)
+  const [authMode, setAuthMode] = useState<AuthDialogMode | null>(null)
+  const [editingEntry, setEditingEntry] = useState(false)
+  const [entryDraft, setEntryDraft] = useState('')
+  const [entryActionBusy, setEntryActionBusy] = useState(false)
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [commentDraft, setCommentDraft] = useState('')
+  const [commentActionId, setCommentActionId] = useState<number | null>(null)
   const [sort, setSort] = useState<'newest' | 'oldest'>('newest')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -125,6 +138,44 @@ function App() {
     setToast({ message, kind })
     window.setTimeout(() => setToast(null), 3800)
   }
+
+  useEffect(() => {
+    if (!supabase) { setAuthReady(true); return }
+    let mounted = true
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null)
+      setAuthReady(true)
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthMode('recovery')
+      }
+      if (event === 'SIGNED_OUT') {
+        setProfile(null)
+      }
+    })
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return
+      if (error) notify('로그인 상태를 불러오지 못했어요.', 'error')
+      setUser(data.session?.user ?? null)
+      setAuthReady(true)
+    })
+    return () => { mounted = false; subscription.unsubscribe() }
+  }, [])
+
+  useEffect(() => {
+    if (!supabase || !user) { setProfile(null); setProfileLoading(false); return }
+    let active = true
+    setProfileLoading(true)
+    void supabase.from('profiles').select('id, display_name, avatar_path, created_at, updated_at').eq('id', user.id).single().then(({ data, error }) => {
+      if (!active) return
+      setProfileLoading(false)
+      if (error) { notify('프로필을 불러오지 못했어요. 데이터베이스 마이그레이션 상태를 확인해 주세요.', 'error'); return }
+      const nextProfile = data as Profile
+      setProfile(nextProfile)
+      setAuthor(nextProfile.display_name)
+      setCommentAuthor(nextProfile.display_name)
+    })
+    return () => { active = false }
+  }, [user?.id])
 
   const loadEntries = useCallback(async () => {
     if (!supabase) return
@@ -205,12 +256,12 @@ function App() {
     const media = photo ?? drawing
     if (media) {
       const extension = photo ? photo.name.split('.').pop()?.toLowerCase() ?? 'jpg' : 'png'
-      mediaPath = `entries/${crypto.randomUUID()}.${extension}`
+      mediaPath = `${user ? `members/${user.id}` : 'entries'}/${crypto.randomUUID()}.${extension}`
       mediaKind = photo ? 'photo' : 'drawing'
       const { error: uploadError } = await supabase.storage.from(MEDIA_BUCKET).upload(mediaPath, media, { contentType: media.type || 'image/png', upsert: false })
       if (uploadError) { setSaving(false); notify(`이미지를 저장하지 못했어요: ${uploadError.message}`, 'error'); return }
     }
-    const { error } = await supabase.from('guestbook').insert({ author: author.trim(), content: content.trim() || null, media_path: mediaPath, media_kind: mediaKind })
+    const { error } = await supabase.from('guestbook').insert({ user_id: user?.id ?? null, author: user ? (profile?.display_name ?? author.trim()) : author.trim(), content: content.trim() || null, media_path: mediaPath, media_kind: mediaKind })
     setSaving(false)
     if (error) { notify(`방명록을 저장하지 못했어요: ${error.message}`, 'error'); return }
     setAuthor('')
@@ -229,11 +280,60 @@ function App() {
     if (!supabase || !selected) return
     if (!commentAuthor.trim() || commentAuthor.trim().length > 40 || !commentContent.trim() || commentContent.trim().length > 500) { notify('이름과 댓글을 확인해 주세요. (각각 1~40자, 1~500자)', 'error'); return }
     setCommentSaving(true)
-    const { error } = await supabase.from('guestbook_comments').insert({ guestbook_id: selected.id, author: commentAuthor.trim(), content: commentContent.trim() })
+    const { error } = await supabase.from('guestbook_comments').insert({ guestbook_id: selected.id, user_id: user?.id ?? null, author: user ? (profile?.display_name ?? commentAuthor.trim()) : commentAuthor.trim(), content: commentContent.trim() })
     setCommentSaving(false)
     if (error) { notify(`댓글을 등록하지 못했어요: ${error.message}`, 'error'); return }
     setCommentAuthor('')
     setCommentContent('')
+  }
+
+  const saveEntryEdit = async () => {
+    if (!supabase || !selected || selected.user_id !== user?.id) return
+    const text = entryDraft.trim()
+    if (!text || text.length > 500) { notify('내용은 1~500자로 입력해 주세요.', 'error'); return }
+    setEntryActionBusy(true)
+    const { data, error } = await supabase.from('guestbook').update({ content: text }).eq('id', selected.id).select('*').maybeSingle()
+    setEntryActionBusy(false)
+    if (error || !data) { notify('방명록을 수정하지 못했어요. 소유권과 RLS 정책을 확인해 주세요.', 'error'); return }
+    const updated = data as GuestbookEntry
+    setSelected(updated)
+    setEntries((current) => current.map((entry) => entry.id === updated.id ? updated : entry))
+    setEditingEntry(false)
+    notify('방명록을 수정했어요.', 'success')
+  }
+
+  const deleteEntry = async () => {
+    if (!supabase || !selected || selected.user_id !== user?.id || !window.confirm('이 방명록을 삭제할까요? 연결된 댓글도 삭제됩니다.')) return
+    setEntryActionBusy(true)
+    const { data, error } = await supabase.from('guestbook').delete().eq('id', selected.id).select('id').maybeSingle()
+    setEntryActionBusy(false)
+    if (error || !data) { notify('방명록을 삭제하지 못했어요. 소유권과 RLS 정책을 확인해 주세요.', 'error'); return }
+    if (selected.media_path?.startsWith(`members/${user.id}/`)) void supabase.storage.from(MEDIA_BUCKET).remove([selected.media_path])
+    setEntries((current) => current.filter((entry) => entry.id !== selected.id))
+    setSelected(null)
+    notify('방명록을 삭제했어요.', 'success')
+  }
+
+  const saveCommentEdit = async (comment: GuestbookComment) => {
+    if (!supabase || comment.user_id !== user?.id) return
+    const text = commentDraft.trim()
+    if (!text || text.length > 500) { notify('댓글은 1~500자로 입력해 주세요.', 'error'); return }
+    setCommentActionId(comment.id)
+    const { data, error } = await supabase.from('guestbook_comments').update({ content: text }).eq('id', comment.id).select('*').maybeSingle()
+    setCommentActionId(null)
+    if (error || !data) { notify('댓글을 수정하지 못했어요. 소유권과 RLS 정책을 확인해 주세요.', 'error'); return }
+    const updated = data as GuestbookComment
+    setComments((current) => current.map((item) => item.id === updated.id ? updated : item))
+    setEditingCommentId(null)
+  }
+
+  const deleteComment = async (comment: GuestbookComment) => {
+    if (!supabase || comment.user_id !== user?.id || !window.confirm('이 댓글을 삭제할까요?')) return
+    setCommentActionId(comment.id)
+    const { data, error } = await supabase.from('guestbook_comments').delete().eq('id', comment.id).select('id').maybeSingle()
+    setCommentActionId(null)
+    if (error || !data) { notify('댓글을 삭제하지 못했어요. 소유권과 RLS 정책을 확인해 주세요.', 'error'); return }
+    setComments((current) => current.filter((item) => item.id !== comment.id))
   }
 
   const sortedEntries = [...entries].sort((a, b) => sort === 'newest' ? Date.parse(b.created_at) - Date.parse(a.created_at) : Date.parse(a.created_at) - Date.parse(b.created_at))
@@ -245,6 +345,7 @@ function App() {
       <nav className="top-actions" aria-label="주요 메뉴">
         <span className={`live-status ${connection}`}><i />{connection === 'online' ? '실시간 연결됨' : connection === 'offline' ? '연결 확인 필요' : '연결 중'}</span>
         <button className={`nav-button ${screen === 'board' ? 'nav-current' : ''}`} onClick={() => setScreen('board')}><BoardIcon /> 보드 보기 <span className="entry-count">{entries.length}</span></button>
+        {!authReady ? <span className="auth-loading">계정 확인 중</span> : user ? <><button className="nav-button" onClick={() => setAuthMode('profile')} disabled={profileLoading}>{profile?.display_name ?? '내 프로필'}</button><button className="nav-button" onClick={() => { void supabase?.auth.signOut().then(({ error }) => error ? notify('로그아웃하지 못했어요.', 'error') : notify('로그아웃했어요.', 'success')) }}>로그아웃</button></> : <><button className="nav-button" onClick={() => setAuthMode('login')}>로그인</button><button className="nav-button" onClick={() => setAuthMode('signup')}>회원가입</button></>}
       </nav>
     </header>
 
@@ -256,7 +357,7 @@ function App() {
         <form className="write-card" onSubmit={submitEntry}>
           <div className="card-topline"><span>01 / YOUR NOTE</span><span className="card-date">작은 인사 남기기</span></div>
           <label className="field-label" htmlFor="guest-name">어떻게 불러드릴까요?</label>
-          <input id="guest-name" className="text-input name-input" value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="이름 또는 별명" maxLength={40} required />
+          <input id="guest-name" className="text-input name-input" value={user ? (profile?.display_name ?? '') : author} onChange={(event) => setAuthor(event.target.value)} placeholder={user ? '프로필에서 이름을 설정해 주세요' : '이름 또는 별명'} maxLength={40} required readOnly={Boolean(user)} />
           <label className="field-label message-label" htmlFor="guest-message">전하고 싶은 한마디 <span>선택</span></label>
           <textarea id="guest-message" className="message-input" value={content} onChange={(event) => setContent(event.target.value)} placeholder="여기에 다정한 말을 적어주세요…" maxLength={500} rows={4} />
           <div className="character-count">{content.length} / 500</div>
@@ -287,14 +388,15 @@ function App() {
 
     {selected && <div className="detail-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-title" onClick={(event) => event.stopPropagation()}>
       <div className="detail-header"><span className="eyebrow">A LITTLE NOTE</span><button className="icon-button" onClick={() => setSelected(null)} aria-label="상세 화면 닫기"><CloseIcon /></button></div>
-      <div className="detail-scroll"><article className="detail-note"><div className="detail-date">{formatDate(selected.created_at)}</div><h2 id="detail-title">{selected.author || '익명'}의 방명록</h2>{currentMedia && <img className="detail-image" src={currentMedia} alt={selected.media_kind === 'drawing' ? '방명록에 포함된 그림' : '방명록에 첨부된 사진'} />}<p className="detail-message">{selected.content || '그림과 사진으로 마음을 남겼어요.'}</p><div className="detail-signature">— {selected.author || '익명'} <span>✿</span></div></article>
+      <div className="detail-scroll"><article className="detail-note"><div className="detail-date">{formatDate(selected.created_at)}</div><h2 id="detail-title">{selected.author || '익명'}의 방명록</h2>{currentMedia && <img className="detail-image" src={currentMedia} alt={selected.media_kind === 'drawing' ? '방명록에 포함된 그림' : '방명록에 첨부된 사진'} />}{editingEntry ? <textarea className="message-input owner-edit-input" value={entryDraft} onChange={(event) => setEntryDraft(event.target.value)} maxLength={500} aria-label="방명록 내용 수정" /> : <p className="detail-message">{selected.content || '그림과 사진으로 마음을 남겼어요.'}</p>}<div className="detail-signature">— {selected.author || '익명'} <span>✿</span></div>{selected.user_id === user?.id && <div className="owner-actions">{editingEntry ? <><button type="button" className="tool-button" onClick={() => setEditingEntry(false)}>취소</button><button type="button" className="tool-button" disabled={entryActionBusy} onClick={() => void saveEntryEdit()}>{entryActionBusy ? '저장 중…' : '수정 저장'}</button></> : <button type="button" className="tool-button" onClick={() => { setEntryDraft(selected.content ?? ''); setEditingEntry(true) }}>내 글 수정</button>}<button type="button" className="tool-button danger-button" disabled={entryActionBusy} onClick={() => void deleteEntry()}>{entryActionBusy ? '처리 중…' : '삭제'}</button></div>}</article>
         <div className="comment-section"><div className="comment-title"><div><span className="eyebrow">KIND WORDS</span><h3>다정한 댓글 <span>{comments.length}</span></h3></div><span className="comment-flower">✳</span></div>
-          {comments.length === 0 ? <p className="no-comments">아직 댓글이 없어요. 첫 번째 다정한 말을 건네볼까요?</p> : <div className="comment-list">{comments.map((comment) => <article className="comment-item" key={comment.id}><div className="comment-avatar">{comment.author.slice(0, 1)}</div><div><div className="comment-meta"><b>{comment.author}</b><time>{formatDate(comment.created_at)}</time></div><p>{comment.content}</p></div></article>)}</div>}
-          <form className="comment-form" onSubmit={submitComment}><input className="text-input comment-name" placeholder="이름" aria-label="댓글 작성자 이름" value={commentAuthor} maxLength={40} onChange={(event) => setCommentAuthor(event.target.value)} /><div className="comment-compose"><input placeholder="따뜻한 댓글을 남겨주세요…" aria-label="댓글 내용" value={commentContent} maxLength={500} onChange={(event) => setCommentContent(event.target.value)} /><button aria-label="댓글 등록" disabled={commentSaving || !commentContent.trim()}>{commentSaving ? <span className="spinner" /> : <SendIcon />}</button></div></form>
+          {comments.length === 0 ? <p className="no-comments">아직 댓글이 없어요. 첫 번째 다정한 말을 건네볼까요?</p> : <div className="comment-list">{comments.map((comment) => <article className="comment-item" key={comment.id}><div className="comment-avatar">{comment.author.slice(0, 1)}</div><div><div className="comment-meta"><b>{comment.author}</b><time>{formatDate(comment.created_at)}</time></div>{editingCommentId === comment.id ? <><textarea className="message-input comment-edit-input" value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} maxLength={500} aria-label="댓글 수정" /><div className="owner-actions"><button type="button" className="tool-button" onClick={() => setEditingCommentId(null)}>취소</button><button type="button" className="tool-button" disabled={commentActionId === comment.id} onClick={() => void saveCommentEdit(comment)}>{commentActionId === comment.id ? '저장 중…' : '수정 저장'}</button></div></> : <p>{comment.content}</p>}{comment.user_id === user?.id && <div className="owner-actions comment-owner-actions"><button type="button" className="tool-button" onClick={() => { setCommentDraft(comment.content); setEditingCommentId(comment.id) }}>수정</button><button type="button" className="tool-button danger-button" disabled={commentActionId === comment.id} onClick={() => void deleteComment(comment)}>{commentActionId === comment.id ? '처리 중…' : '삭제'}</button></div>}</div></article>)}</div>}
+          <form className={`comment-form ${user ? 'comment-form-member' : ''}`} onSubmit={submitComment}>{!user && <input className="text-input comment-name" placeholder="이름" aria-label="댓글 작성자 이름" value={commentAuthor} maxLength={40} onChange={(event) => setCommentAuthor(event.target.value)} />}<div className="comment-compose"><input placeholder="따뜻한 댓글을 남겨주세요…" aria-label="댓글 내용" value={commentContent} maxLength={500} onChange={(event) => setCommentContent(event.target.value)} /><button aria-label="댓글 등록" disabled={commentSaving || !commentContent.trim()}>{commentSaving ? <span className="spinner" /> : <SendIcon />}</button></div></form>
         </div>
       </div>
     </section></div>}
 
+    {authMode && <AuthDialog mode={authMode} user={user} profile={profile} onClose={() => { setAuthMode(null); if (authMode === 'recovery') window.history.replaceState(null, '', window.location.pathname) }} onProfileSaved={(next) => { setProfile(next); setAuthor(next.display_name); setCommentAuthor(next.display_name) }} />}
     {showCanvas && <CanvasPad onDone={acceptDrawing} onCancel={() => setShowCanvas(false)} />}
     {toast && <div className={`toast ${toast.kind}`} role="status">{toast.kind === 'success' ? '✿' : toast.kind === 'error' ? '!' : '✳'} {toast.message}</div>}
   </main>
