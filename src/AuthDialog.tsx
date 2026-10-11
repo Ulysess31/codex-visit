@@ -50,11 +50,12 @@ export default function AuthDialog({ mode, user, profile, onClose, onProfileSave
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { emailRedirectTo: authRedirectUrl(), data: { display_name: displayName.trim() } },
+          options: { data: { display_name: displayName.trim() } },
         })
         if (error) throw error
-        if (!data.session) setMessage('가입 요청을 보냈어요. 이메일 인증 링크를 확인한 뒤 로그인해 주세요.')
-        else { setMessage('회원가입이 완료됐어요.'); window.setTimeout(onClose, 700) }
+        if (!data.session) throw new Error('회원가입은 처리됐지만 바로 로그인되지 않았어요. Supabase Auth에서 이메일 확인(Confirm email)을 꺼야 인증 메일 없이 가입할 수 있어요.')
+        setMessage('회원가입이 완료됐어요.')
+        window.setTimeout(onClose, 700)
       } else if (mode === 'login' && resetMode) {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: authRedirectUrl() })
         if (error) throw error
@@ -98,16 +99,6 @@ export default function AuthDialog({ mode, user, profile, onClose, onProfileSave
     }
   }
 
-  const resendConfirmation = async () => {
-    if (!supabase || !email.trim()) return
-    setBusy(true)
-    setErrorMessage('')
-    const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: authRedirectUrl() } })
-    setBusy(false)
-    if (error) showError(error.message)
-    else setMessage('인증 메일을 다시 보냈어요. 받은 편지함을 확인해 주세요.')
-  }
-
   const title = mode === 'signup' ? '회원가입' : mode === 'profile' ? '내 프로필' : mode === 'recovery' ? '비밀번호 변경' : resetMode ? '비밀번호 재설정' : '로그인'
   const currentAvatar = avatarPreview ?? mediaUrl(profile?.avatar_path)
 
@@ -125,7 +116,6 @@ export default function AuthDialog({ mode, user, profile, onClose, onProfileSave
         {(mode === 'login' && !resetMode || mode === 'signup') && <label className="field-label" htmlFor="auth-password">비밀번호<input id="auth-password" className="text-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={mode === 'signup' ? 8 : undefined} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required /></label>}
         {mode === 'recovery' && <label className="field-label" htmlFor="auth-new-password">새 비밀번호<input id="auth-new-password" className="text-input" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} autoComplete="new-password" required /></label>}
         {message && <p className="auth-message" role="status">{message}</p>}
-        {mode === 'signup' && message.includes('이메일 인증') && <button type="button" className="auth-resend" disabled={busy || !email.trim()} onClick={() => void resendConfirmation()}>{busy ? '전송 중…' : '인증 메일 다시 보내기'}</button>}
         {errorMessage && <p className="auth-error" role="alert">{errorMessage}</p>}
         <button className="primary-button auth-submit" disabled={busy || (mode === 'profile' && !profile)}>{busy ? <><span className="spinner" /> 처리 중…</> : mode === 'profile' ? '프로필 저장' : mode === 'recovery' ? '비밀번호 변경' : mode === 'signup' ? '가입하기' : resetMode ? '재설정 이메일 보내기' : '로그인'}</button>
       </form>

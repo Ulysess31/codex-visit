@@ -93,6 +93,18 @@
 
 ## 다음 작업
 
-1. Supabase Auth URL Configuration에 운영 `https://ulysess31.github.io/codex-visit/` 및 로컬 `http://localhost:5174/` 리디렉션 주소가 허용됐는지 확인한다. 이메일 확인/재설정 메일 설정도 확인한다.
-2. 로컬 `http://localhost:5174/`에서 가입·메일 인증·로그인·로그아웃·프로필 수정 및 두 회원 사이의 글/댓글 소유권을 확인한다.
+1. Supabase Auth URL Configuration에 운영 `https://ulysess31.github.io/codex-visit/` 및 로컬 `http://localhost:5174/` 리디렉션 주소가 허용됐는지 확인하고, Email provider에서 Confirm email을 비활성화한다. 비밀번호 재설정 메일은 유지한다.
+2. 로컬 `http://localhost:5174/`에서 이메일 확인 없이 가입 직후 세션 생성, 로그인·로그아웃·프로필 수정 및 두 회원 사이의 글/댓글 소유권을 확인한다.
 3. GitHub Pages 재배포와 공개 쓰기 스팸 방지 방식을 진행한다.
+
+### 2026-10-11 — Supabase 회원 데이터 정리
+
+- 사용자 확인 후 Supabase Auth 계정 2개, 프로필 2개, 회원 작성 방명록 글 1건을 삭제했다. 회원 댓글은 0건이었다.
+- 확인 결과 Auth 계정/프로필은 0건이며, 익명 방명록 3건과 댓글 6건은 유지됐다.
+- Storage의 아바타 객체 1개는 삭제 API 연결이 없어 남아 있다. Storage API로 별도 삭제가 필요하다.
+
+### 2026-10-11 — 회원가입 이메일 인증 생략
+
+- 회원가입 요청에서 인증 메일 복귀 URL과 인증 대기/재전송 UI를 제거하고, 즉시 세션이 생기도록 클라이언트를 변경했다.
+- 이메일 확인 없이 가입하려면 Supabase Dashboard의 Authentication > Providers > Email에서 Confirm email을 비활성화해야 한다. 연결된 Supabase 도구에는 Auth 설정 변경 기능이 없어 원격 토글은 아직 적용하지 못했다.
+- 비밀번호 재설정 메일 흐름은 유지한다.

@@ -47,6 +47,7 @@
 ## 회원 인증·인가 구현 상태
 
 - Supabase Auth 이메일/비밀번호 가입·로그인·로그아웃, 세션 복원, 비밀번호 재설정, 프로필 표시 이름·아바타 편집 UI를 추가했다.
+- 2026-10-11: 회원가입은 이메일 확인 없이 즉시 세션을 만들도록 클라이언트 흐름을 변경했다. Supabase 프로젝트의 Email provider에서 Confirm email을 꺼야 완전히 적용된다. 현재 연결된 MCP에는 Auth 프로젝트 설정을 갱신하는 기능이 없어 원격 토글은 아직 변경하지 못했다. 비밀번호 재설정 메일은 유지한다.
 - 가입 시 `auth.users` 트리거가 `public.profiles`를 생성하도록 migration을 적용했다. 서비스 역할 키를 클라이언트에서 사용하지 않는다.
 - guestbook/comment에 `auth.users.id` FK 기반 nullable `user_id`와 소유자 수정·삭제 RLS, Storage의 `members/<uid>` 및 `avatars/<uid>` 경로 정책을 migration에 정의했다.
 - 기존 공개 읽기, 비회원 작성/`entries/` 업로드 및 기존 데이터는 보존하는 정책이다. 회원 글·댓글의 수정·삭제 UI는 사용자 소유 항목에만 표시한다.
